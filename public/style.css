@@ -1,0 +1,58 @@
+body{
+    min-height: 100vh;
+    background-color:midnightblue;
+    display: flex;
+    gap: 5em;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1{
+    color: red;
+}
+
+#welcome p{
+    color: chartreuse;
+}
+
+form{
+    margin-bottom: 5em;
+}
+
+textarea{
+    width: 100%;
+    min-height: 9em;
+    vertical-align: middle;
+    overflow: initial;
+    border: none;
+    background-color:cornflowerblue;
+    color:darkblue;
+    outline: none;
+    margin-bottom: 0.5em;
+    resize: none;
+}
+
+textarea::placeholder{
+    color:darkblue;
+}
+
+button{
+    border: none;
+    background-color:cornflowerblue;
+    color:darkblue;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#screen{
+    min-width: 25em;
+    min-height: 30em;
+    background-color: chartreuse;
+    display: inline-block;
+}
+
+#screen p{
+    max-width: 25em;
+    color: blue;
+}
