@@ -22,11 +22,11 @@ const server = http.createServer((req, res) => {
     }
     if (req.method == "POST" && req.url == "/uploadFile"){
         bodyParser.body_parser(req).then(() => {
-            console.log(req.form);
+            console.log(req.body);
             console.log("HEADER: ",req.headers);
-                if(req.form)
-                    middlewares.saveFiles(req.form,req.headers,false);
-                else
+                if(req.headers["content-type"].includes("multipart/form-data"))
+                    middlewares.saveFiles(req.form,req.headers,false,false);
+                else if(req.headers["content-type"].includes("image/"))
                     middlewares.saveFiles(false,req.headers,req.body);
             })
             res.end("bananas");

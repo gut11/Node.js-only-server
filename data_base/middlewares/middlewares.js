@@ -1,4 +1,5 @@
 const fs = require("fs");
+const getDataType = require("../../body-parser/body-parser.js").getDataType;
 
 
 
@@ -65,7 +66,7 @@ function saveFiles(form, header, body) {
         else {
             encoding = "hex";
         }
-        fs.writeFile("/files/" + filename, body, encoding, error => {
+        fs.writeFile("./files/" + filename, body, encoding, error => {
             if (error)
                 console.log(error);
             else
