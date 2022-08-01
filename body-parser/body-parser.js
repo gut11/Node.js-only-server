@@ -1,9 +1,7 @@
 const fs = require("fs");
-
-
-
-//missing backup
-
+const benchmarkMode = false;
+const mb = 100;
+let start;
 
 
 
@@ -11,12 +9,7 @@ const fs = require("fs");
 
 function body_parser(req) {
     return new Promise((resolve, reject) => {
-        if (req.headers["content-type"] == "application/x-www-form-urlencoded") {
-            req.setEncoding("utf8");
-            concatenateChuncksOnReq(resolve, reject, req);
-        }
-        else if (req.headers["content-type"].includes("image/")) {
-            req.setEncoding("hex");
+        if (req.headers["content-type"].includes("image/")) {
             concatenateChuncksOnReq(resolve, reject, req);
         }
         else if (req.headers["content-type"].includes("multipart/form-data")) {
@@ -39,28 +32,35 @@ function multipartParser(req, boundaryText, boundaryBuffer, resolve, reject) {
     req.form.subHeader = [];
     req.form.body = [];
     req.form.dataType = [];
+    const dash = 45; // 45 is dash in utf-8 encoding
     let subHeaderBrokenInTwoChuncks = false;
     let isBoundaryBroken = false;
-    let dataFromLastChunckBoundary = {};
     let readingSubHeader = true;
     let isFirstTime = true;
     let readingData = false;
+    let bytesRead = 0;
+    let pieceFromChunckCanBeBoundary;
+    let iWhereDataStarts;
+    if (benchmarkMode)
+        start = Date.now();
     req.on("data", chunck => {
         let i = 0;
-        while (i < chunck.length) {
+        const chunckLength = chunck.length;
+        const boundaryLength = boundaryBuffer.length;
+        while (i < chunckLength) {
             let getSubHeaderReturn;
             if (readingSubHeader) {
                 if (subHeaderBrokenInTwoChuncks) {
                     getSubHeaderReturn = getSubHeader(chunck, i, isFirstTime, boundaryText.length, subHeaderBrokenInTwoChuncks);
                     subHeaderBrokenInTwoChuncks = false;
-                } 
+                }
                 else {
                     getSubHeaderReturn = getSubHeader(chunck, i, isFirstTime, boundaryText.length, false);
                 }
                 if (getSubHeaderReturn.broken) {
                     subHeaderBrokenInTwoChuncks = getSubHeaderReturn;
                     break;
-                } 
+                }
                 else {
                     let subHeader = getSubHeaderReturn.subHeader;
                     i = getSubHeaderReturn.i;
@@ -72,91 +72,94 @@ function multipartParser(req, boundaryText, boundaryBuffer, resolve, reject) {
                     req.form.body.push("");
                 }
             }
-            let body = "";
+            iWhereDataStarts = i;
             while (readingData) {
                 let isBoundaryReturn;
                 if (boundaryBuffer.includes(chunck[i]) || isBoundaryBroken) {
                     if (isBoundaryBroken) {
-                        isBoundaryReturn = isBoundary(chunck, boundaryBuffer, i, dataFromLastChunckBoundary);
-                        req.form.body[req.form.body.length - 1] = req.form.body[req.form.body.length - 1].substring(0, req.form.body[req.form.body.length - 1].length - dataFromLastChunckBoundary.numberCharsInHexSavedOnReq);
-                        isBoundaryBroken = false;
+                        isBoundaryReturn = isBoundary(chunck, boundaryBuffer, i, bytesRead);
+                        if (!isBoundaryReturn.boolean)
+                            saveDataOnReq(req, pieceFromChunckCanBeBoundary, 0, pieceFromChunckCanBeBoundary.length);
+                        else
+                            isBoundaryBroken = false;
                     }
                     else {
                         isBoundaryReturn = isBoundary(chunck, boundaryBuffer, i);
                     }
                     if (isBoundaryReturn.broken) {
-                        console.log("broken 2")
                         isBoundaryBroken = true;
-                        dataFromLastChunckBoundary = isBoundaryReturn.dataFromLastChunckBoundary;
-                        applyEncodingBodyAndSaveOnReq(req, body);
+                        bytesRead = isBoundaryReturn.numberBytesReaded;
+                        saveDataOnReq(req, chunck, iWhereDataStarts, i);
+                        pieceFromChunckCanBeBoundary = chunck.slice(i, chunckLength);
                         break;
                     }
                     if (isBoundaryReturn.boolean) {
-                        if (isBoundaryReturn.numberCharsInHexSavedBody)
-                            body = body.substring(0, body.length - isBoundaryReturn.numberCharsInHexSavedBody);
                         i = isBoundaryReturn.boundaryEnd;
-                        if (chunck[i] == 45 && chunck[i + 1] == 45) { // 45 is "-" in utf-8 encoding
-                            applyEncodingBodyAndSaveOnReq(req, body);
-                            return;
+                        if (chunck[i] == dash && chunck[i + 1] == dash) {
+                            if (isBoundaryBroken) {
+                                isBoundaryBroken = false;
+                                return;
+                            }
+                            else {
+                                saveDataOnReq(req, chunck, iWhereDataStarts, i - boundaryLength - 2); //-2 for the dash and the \r\n
+                                return;
+                            }
                         }
                         else {
                             readingSubHeader = true;
                             readingData = false;
+                            if (isBoundaryBroken) {
+                                isBoundaryBroken = false;
+                                break;
+                            }
+                            else {
+                                saveDataOnReq(req, chunck, iWhereDataStarts, i - boundaryLength - 1); //-1 for the \r\n
+                                break;
+                            }
                         }
                     }
                 } if (readingData) {
-                    let readChunckReturn = readChunckAndSaveOnBody(chunck, boundaryBuffer, i);
-                    body += readChunckReturn.body;
-                    i = readChunckReturn.i;
+                    i = skipChunckChars(chunckLength, boundaryLength, i);
                 }
-                if (i >= chunck.length || !readingData) {
-                    applyEncodingBodyAndSaveOnReq(req, body);
+                if (i >= chunckLength) {
+                    saveDataOnReq(req, chunck, iWhereDataStarts, i);
                     break;
                 }
             }
         }
     })
-
     req.on("end", error => {
-        if (error) {
-            console.log("deu erro em td:", error);
-            reject();
+        if (benchmarkMode) {
+            let duration = Date.now() - start;
+            console.log("Mb/S:", mb / (duration / 1000));
         }
-        else {
-            console.log("deu td certo, pelo menos em teoria");
+        if (error)
+            reject(error);
+        else
             resolve();
-        }
     })
 }
 
 
-
-function readChunckAndSaveOnBody(chunck, boundaryBuffer, i) {
-    let j = 0;
-    let body = "";
-    if (i + boundaryBuffer.length >= chunck.length) {
-        j = (i + boundaryBuffer.length - chunck.length) + 1;
+function skipChunckChars(chunckLength, boundaryLength, i) {
+    let skipableChars;
+    if (i + boundaryLength >= chunckLength) {
+        skipableChars = chunckLength - i;
     }
-    while (j <= boundaryBuffer.length) {
-        body += chunck.toString("hex", i, i + 1);
-        i++;
-        j++;
-    }
-    return { body, i };
+    else
+        skipableChars = boundaryLength;
+    i += skipableChars;
+    return i;
 }
 
 
-function applyEncodingBodyAndSaveOnReq(req, body) {
-    if (req.form.dataType[req.form.dataType.length - 1] == "text")
-        body = convertFromHexToUtf8(body);
-    req.form.body[req.form.body.length - 1] += body;
+function saveDataOnReq(req, chunck, iWhereDataStarts, end) {
+    chunck = chunck.slice(iWhereDataStarts, end);
+    if (req.form.dataType[req.form.dataType.length - 1] == "binary")
+        req.form.body[req.form.body.length - 1] += chunck.toString("binary");
+    else
+        req.form.body[req.form.body.length - 1] += chunck.toString("utf8");
     return;
-}
-
-
-function convertFromHexToUtf8(hexString) {
-    let buffer = Buffer.from(hexString, "hex");
-    return buffer.toString("utf-8");
 }
 
 
@@ -183,7 +186,7 @@ function getDataType(subHeader) {
     } else if (subHeader["content-type"]) {
         contentType = subHeader["content-type"];
     }
-    if (textMimeTypes.includes(contentType) || !contentType)
+    if (textMimeTypes.includes(contentType) || contentType == undefined)
         return "text";
     else
         return "binary";
@@ -194,7 +197,6 @@ function ConvertSubheaderToObject(subHeader) {
     if (subHeader == "\n")
         return ""
     subHeader = jsonFormater(subHeader);
-    console.log(subHeader);
     return JSON.parse(subHeader);
 }
 
@@ -277,102 +279,82 @@ function toUtf8(chunck, i) {
 }
 
 
-function toHex(chunck, i) {
-    return chunck.toString("hex", i, i + 1);
-}
-
-
-function isBoundary(chunck, boundary, i, dataFromLastChunckBoundary) {
+function isBoundary(chunck, boundary, i, bytesReededOnLastChunck) {
     let nextChar = chunck[i + 1];
     let previousChar = chunck[i - 1];
-    if (dataFromLastChunckBoundary != undefined){
+    if (bytesReededOnLastChunck != undefined) {
         let char = chunck[i];
-        if (dataFromLastChunckBoundary.numberBytesReaded == boundary.length && !boundary.includes(char))
-            return { boolean: true, boundaryEnd: i, numberCharsInHexSavedBody: false };
-        else if(boundary.includes(char))
-            return tryReadBoundary(chunck, i, boundary, false, dataFromLastChunckBoundary);
+        if (bytesReededOnLastChunck == boundary.length && !boundary.includes(char))
+            return { boolean: true, boundaryEnd: i };
+        else if (boundary.includes(char))
+            return tryReadBoundary(chunck, i, boundary, bytesReededOnLastChunck);
         else
             return { boolean: false };
     }
     if (previousChar != undefined) {
         if (boundary.includes(previousChar)) {
-            let goBackReturn = goBackToLatestCharMatchesAnyBoundaryChar(chunck, boundary, i);
-            return tryReadBoundary(chunck, goBackReturn.i, boundary, goBackReturn.numberCharsInHex, false);
+            i = findBoundarystart(chunck, boundary, i);
+            return tryReadBoundary(chunck, i, boundary, false);
         }
     }
     if (nextChar != undefined) {
-        if (boundary.includes(nextChar)) 
-            return tryReadBoundary(chunck, i, boundary, false, false);
+        if (boundary.includes(nextChar))
+            return tryReadBoundary(chunck, i, boundary, false);
         else
             return { boolean: false };
     }
     else
-        return { dataFromLastChunckBoundary: { numberBytesReaded: 1 }, broken: true };
+        return { numberBytesReaded: 0, broken: true };
 }
 
 
-function goBackToLatestCharMatchesAnyBoundaryChar(chunck, boundary, i) {
+function findBoundarystart(chunck, boundary, i) {
     let previousChar;
-    let numberCharsInHex = 4; //starts in 4 for \r and \n in hex
     do {
         i--;
-        numberCharsInHex += returnNumberCharsinHex(chunck, i);
         previousChar = chunck[i - 1];
     } while (boundary.includes(previousChar));
-    return { i, numberCharsInHex }
+    return i;
 }
 
 
-function returnNumberCharsinHex(chunck, i) {
-    let previousCharInHex;
-    previousCharInHex = toHex(chunck, i - 1);
-    return previousCharInHex.length;
-}
-
-
-function tryReadBoundary(chunck, i, boundary, numberCharsInHex, dataFromLastChunckBoundary) {
+function tryReadBoundary(chunck, i, boundary, bytesReededOnLastChunck) {
     let cont = 0;
-    let iWhereBoundaryStarts = i;
-    if (dataFromLastChunckBoundary) {
-        cont = dataFromLastChunckBoundary.numberBytesReaded;
-        iWhereBoundaryStarts = i - cont;
-    }
-    let numberCharsReturn = NumberCharsMatchBoundaryCharsInSequence(chunck, i, boundary, numberCharsInHex, cont);
+    if (bytesReededOnLastChunck)
+        cont = bytesReededOnLastChunck;
+    let numberCharsReturn = NumberCharsMatchBoundaryCharsInSequence(chunck, i, boundary, cont);
     if (Number.isInteger(numberCharsReturn))
-        return checkIfWasBoundaryAndReturn(numberCharsReturn, boundary, numberCharsInHex, iWhereBoundaryStarts);
+        return checkIfWasBoundaryAndReturn(numberCharsReturn, boundary, i);
     else
         return numberCharsReturn;
 }
 
 
-function NumberCharsMatchBoundaryCharsInSequence(chunck, i, boundary, numberCharsInHex, cont) {
+function NumberCharsMatchBoundaryCharsInSequence(chunck, i, boundary, cont) {
     let char;
     do {
         cont++;
         i++;
         char = chunck[i];
         if (char == undefined)  //if char is undefined that means that boundary is divided in two chuncks
-            return checkIfBoundaryIsbrokenOrNotAndReturn(boundary, cont, numberCharsInHex);
+            return checkIfBoundaryIsbrokenOrNotAndReturn(boundary, cont);
     } while (boundary.includes(char));
     return cont;
 }
 
 
-function checkIfBoundaryIsbrokenOrNotAndReturn(boundary, cont, numberCharsInHexSavedOnReq) {
+function checkIfBoundaryIsbrokenOrNotAndReturn(boundary, cont) {
     if (cont == boundary.length + 2)
         return cont;
     else
-        return { dataFromLastChunckBoundary: { numberBytesReaded: cont, numberCharsInHexSavedOnReq }, broken: true };
+        return { numberBytesReaded: cont, broken: true };
 }
 
 
-function checkIfWasBoundaryAndReturn(cont, boundary, numberCharsInHex, iWhereBoundaryStarts) {
+function checkIfWasBoundaryAndReturn(cont, boundary, iWhereBoundarysubHeaderEnds) {
     if (cont == boundary.length || cont == boundary.length + 2) {
-        let iWhereBoundaryEnds = iWhereBoundaryStarts + boundary.length;
-        if (numberCharsInHex)
-            return { boolean: true, boundaryEnd: iWhereBoundaryEnds, numberCharsInHexSavedBody: numberCharsInHex };
-        else
-            return { boolean: true, boundaryEnd: iWhereBoundaryEnds, numberCharsInHexSavedBody: false };
+        let iWhereBoundaryEnds = iWhereBoundarysubHeaderEnds + boundary.length;
+        return { boolean: true, boundaryEnd: iWhereBoundaryEnds };
     }
     else {
         return { boolean: false };
@@ -389,18 +371,16 @@ function getBoundary(req) {
 
 
 function concatenateChuncksOnReq(resolve, reject, req) {
-    req.body = "";
     req.on("data", chunck => {
-        req.body += chunck;
+        req.body = chunck.toString("binary");
     })
     req.on("end", error => {
         if (error) {
             res.end("error");
             reject();
         }
-        else {
+        else
             resolve();
-        }
     })
 }
 

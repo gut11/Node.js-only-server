@@ -20,17 +20,17 @@ const server = http.createServer((req, res) => {
             middlewares.appendFile("data.txt", data, res);
         })
     }
-    if (req.method == "POST" && req.url == "/uploadFile"){
+    if (req.method == "POST" && req.url == "/uploadFile") {
         bodyParser.body_parser(req).then(() => {
-            console.log(req.body);
-            console.log("HEADER: ",req.headers);
-                if(req.headers["content-type"].includes("multipart/form-data"))
-                    middlewares.saveFiles(req.form,req.headers,false,false);
-                else if(req.headers["content-type"].includes("image/"))
-                    middlewares.saveFiles(false,req.headers,req.body);
-            })
-            res.end("bananas");
-        }
+            if (req.headers["content-type"].includes("multipart/form-data"))
+                middlewares.saveFiles(req.form, req.headers, false, false);
+            else if (req.headers["content-type"].includes("image/"))
+                middlewares.saveFiles(false, req.headers, req.body);
+        }).catch(error => {
+            console.log("almofada", error);
+        })
+        res.end("bananas");
+    }
     if (req.method == "DELETE" && req.url == "/deleteData") {
         let data = "";
         middlewares.clearFile("data.txt", res);
