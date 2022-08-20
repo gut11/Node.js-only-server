@@ -1,4 +1,3 @@
-const fs = require("fs");
 const benchmarkMode = false;
 const mb = 100;
 let start;
@@ -9,14 +8,21 @@ let start;
 
 function body_parser(req) {
     return new Promise((resolve, reject) => {
-        if (req.headers["content-type"].includes("image/")) {
-            concatenateChuncksOnReq(resolve, reject, req);
+        if (req.headers["content-type"] != undefined) {
+            if (req.headers["content-type"].includes("image/")) {
+                concatenateChuncksOnReq(resolve, reject, req, "binary");
+            }
+            else if (req.headers["content-type"].includes("multipart/form-data")) {
+                let boundaryText = getBoundary(req);
+                let boundaryBuffer = CreateBoundaryBuffer(boundaryText);
+                multipartParser(req, boundaryText, boundaryBuffer, resolve, reject);
+            }
+            else 
+                concatenateChuncksOnReq(resolve, reject, req, "utf8");
+            
         }
-        else if (req.headers["content-type"].includes("multipart/form-data")) {
-            let boundaryText = getBoundary(req);
-            let boundaryBuffer = CreateBoundaryBuffer(boundaryText);
-            multipartParser(req, boundaryText, boundaryBuffer, resolve, reject);
-        }
+        else
+            concatenateChuncksOnReq(resolve, reject, req, "utf8");
     })
 }
 
@@ -262,6 +268,7 @@ function getSubHeader(chunck, i, isFirstTime, boundaryLength, subHeaderFromLastC
         if (toUtf8(chunck, i) == "\r") {
             let nextChars = toUtf8(chunck, i + 1) + toUtf8(chunck, i + 2) + toUtf8(chunck, i + 3);
             if (nextChars == "\n\r\n") {
+                console.log("return")
                 return { subHeader, i: i + 4 };
             }
 
@@ -370,9 +377,10 @@ function getBoundary(req) {
 }
 
 
-function concatenateChuncksOnReq(resolve, reject, req) {
+function concatenateChuncksOnReq(resolve, reject, req, encoding) {
+    req.body = "";
     req.on("data", chunck => {
-        req.body = chunck.toString("binary");
+        req.body += chunck.toString(encoding);
     })
     req.on("end", error => {
         if (error) {

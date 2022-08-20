@@ -54,44 +54,20 @@ function readFile(fileName) {
 }
 
 
-function saveFiles(form, header, body) {
-    let i = 0;
-    let encoding;
-    if (body) {
-        let filename = header["filename"];
-        let type = getDataType(header);
-        if (type == "text") {
-            encoding = "utf8";
+function saveFile(data, fileName,encoding) {
+    const dir = "./files/";
+    fs.writeFile(dir + fileName,data,encoding, err => {
+        if(err){
+            console.log(err)
+            return err;
         }
-        else {
-            encoding = "hex";
+        else{
+            const msg = "Arquivo salvo com sucesso!";
+            console.log(msg);
+            return msg;
         }
-        fs.writeFile("./files/" + filename, body, encoding, error => {
-            if (error)
-                console.log(error);
-            else
-                console.log("Arquivo salvo com sucesso");
-        })
-        return;
-    }
-    if (form) {
-        form.subHeader.forEach(subHeader => {
-            if (subHeader.filename) {
-                if (form.dataType == "text")
-                    encoding = "utf8";
-                else
-                    encoding = "hex";
-                fs.writeFile("./files/" + subHeader.filename, form.body[i], encoding, error => {
-                    if (error)
-                        console.log(error);
-                    else
-                        console.log("Arquivo salvo com sucesso");
-                })
-            }
-            i++;
-        })
-    }
+    });
 }
 
 
-module.exports = { readFile, clearFile, appendFile, saveFiles }
+module.exports = { readFile, clearFile, appendFile, saveFile }
