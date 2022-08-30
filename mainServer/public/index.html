@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="./style.css" rel="stylesheet" type="text/css">
+    <script src="/script.js" type="text/javascript" defer></script>
+    <title>Server simples</title>
+</head>
+
+<body>
+    <section id="welcome">
+        <h1>Bem vindo a pagina do servidor simples criado apenas com node JS</h1>
+        <p>Aqui nesta pagina vc pode fazer varias funcionalidades basicas todas implementadas apenas com NODEJS</p>
+    </section>
+    <hr>
+
+    <section id="up-file-container">
+        <form method="post" action="/uploadFile" enctype="multipart/form-data">
+            <div id="upload-file-background">
+                <label>Faça o upload de um arquivo para o server</label>
+                <input id="file-upload-input" type="file" name="file-flimbous">
+            </div>
+            <label for="file-upload-input" id="choose-file-button">Selecione o arquivo</label>
+            <button type="button" id="upload-button">Upload arquivo</button>
+            <p id="upload-msg"></p>
+        </form>
+    </section>
+    <hr>
+    <section id="download-sec">
+        <h3>Escolha um arquivo do servidor para baixar</h3>
+        <div class="screen" id="down-screen">
+        </div>
+        <a id="down-file-anchor"><button id="down-file-button">Download arquivo</button></a>
+    </section>
+    <hr>
+    <section>
+        <div id="panel">
+            <form>
+                <textarea
+                    placeholder="Todo o texto digitado aqui e enviado sera adicionado em um arquivo texto no servidor"></textarea>
+                <button id="send-data-button">Enviar</button>
+                <p id="txt-update-feedback"></p>
+            </form>
+            <button id="delete-data-button">Limpar arquivo no servidor</button>
+            <button id="show-data-button">Mostrar conteudo do arquivo</button>
+        </div>
+        <div class="screen">
+            <p id="txt-text-area"></p>
+        </div>
+    </section>
+</body>
+
+</html>

@@ -1,0 +1,142 @@
+
+@keyframes down-button{
+    0%{background: linear-gradient(230deg, cornflowerblue,cornflowerblue);}
+    10%{background: linear-gradient(230deg, cornflowerblue , green 200%)}
+    30%{background: linear-gradient(230deg, cornflowerblue  green 150%)}
+    50%{color: chartreuse;}
+    60%{color: chartreuse;background: linear-gradient(230deg, cornflowerblue , green 100%)}
+    75%{color: chartreuse;background: linear-gradient(230deg, cornflowerblue , green 50%)}
+    85%{color: chartreuse;background: linear-gradient(230deg, cornflowerblue , green 25%)}
+    100%{color: chartreuse;background: linear-gradient(230deg, cornflowerblue , green 0%)}
+}
+
+*{
+    color:darkblue;
+    --gradient: linear-gradient(230deg);
+}
+
+body{
+    min-height: 100vh;
+    background-color:midnightblue;
+    display: flex;
+    gap: 5em;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1{
+    color: red;
+}
+
+hr{
+    width: 100%;
+    height: 1px;
+    border: 0;
+    background-color: rgb(103, 150, 103)
+}
+
+#welcome p{
+    color: chartreuse;
+}
+
+#upload-file-background{
+    background-color:cornflowerblue;
+    margin-bottom: 1.5em;
+}
+
+#panel form{
+    margin-bottom: 5em;
+}
+
+textarea{
+    width: 100%;
+    min-height: 9em;
+    vertical-align: middle;
+    overflow: initial;
+    border: none;
+    background-color:cornflowerblue;
+    color:darkblue;
+    outline: none;
+    margin-bottom: 0.5em;
+    resize: none;
+}
+
+textarea::placeholder{
+    color:darkblue;
+}
+
+button, #choose-file-button{
+    border: none;
+    background-color:cornflowerblue;
+    color:darkblue;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+
+#up-file-container button{
+    float: right;
+}
+
+
+#choose-file-button{
+    border-radius: 40%;
+    padding: .45em .55em;
+
+}
+
+
+#file-upload-input{
+    display: none;
+}
+
+
+#panel{
+    margin-bottom: 5em;
+}
+
+
+.screen{
+    min-width: 25em;
+    min-height: 30em;
+    background-color: chartreuse;
+    display: inline-block;
+}
+
+.screen p{
+    max-width: 25em;
+    color: blue;
+}
+
+#down-screen{
+    min-height: 0;
+    min-width: 0;
+    max-height: 10em;
+    padding: 1em;
+    display: flex;
+    gap: .5em;
+    flex-wrap: wrap;
+    flex-direction: column;
+    margin-bottom: .5em;
+}
+
+#download-sec h3{
+    color: chartreuse;
+}
+
+.file-selector{
+    width: 50%;
+    background-color: cornflowerblue;
+    text-align: center;
+    border-radius: 100px;
+    cursor: pointer;
+    padding: .5em;
+}
+
+.file-selector:hover{
+    animation-name: down-button;
+    animation-duration: 150ms;
+    animation-fill-mode: forwards;
+}
+

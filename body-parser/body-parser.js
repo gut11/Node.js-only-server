@@ -17,9 +17,9 @@ function body_parser(req) {
                 let boundaryBuffer = CreateBoundaryBuffer(boundaryText);
                 multipartParser(req, boundaryText, boundaryBuffer, resolve, reject);
             }
-            else 
+            else
                 concatenateChuncksOnReq(resolve, reject, req, "utf8");
-            
+
         }
         else
             concatenateChuncksOnReq(resolve, reject, req, "utf8");
@@ -267,11 +267,8 @@ function getSubHeader(chunck, i, isFirstTime, boundaryLength, subHeaderFromLastC
     while (i < chunck.length) {
         if (toUtf8(chunck, i) == "\r") {
             let nextChars = toUtf8(chunck, i + 1) + toUtf8(chunck, i + 2) + toUtf8(chunck, i + 3);
-            if (nextChars == "\n\r\n") {
-                console.log("return")
+            if (nextChars == "\n\r\n")
                 return { subHeader, i: i + 4 };
-            }
-
         }
         subHeader += toUtf8(chunck, i);
         i++;
