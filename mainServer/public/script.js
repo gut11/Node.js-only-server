@@ -1,4 +1,5 @@
 const greenScreen = document.getElementById("txt-text-area");
+const txtInput = document.getElementById("txt-file-input");
 
 
 
@@ -89,25 +90,29 @@ function AddEventListenersToFilesNames() {
 function fetchDataFromTxtFile() {
     const sucessMessage = "Texto do arquivo pego com sucesso!";
     const failMessage = "A operacão de pegar texto do arquivo falhou!";
+    const feedbackP = document.getElementById("txt-update-feedback");
     fetch("/get-txt-data/")
         .then(res => {
-            if (res.status > 199 && res.status < 300)
+            if (res.status > 199 && res.status < 300){
                 insertFeedbackMessage(feedbackP,sucessMessage,true);
-            else
-                insertFeedbackMessage(feedbackP,failMessage,false);
-            res.text()
+                res.text()
                 .then(text => {
-                    greenScreen.innerHTML += text;
+                    greenScreen.innerHTML = text;
                 })
+            }
+            else{
+                insertFeedbackMessage(feedbackP,failMessage,false);
+            }
         })
 }
 
 
 function sendDataToTxtFile() {
-    const data = greenScreen.innerHTML;
+    const data = txtInput.value;
     const feedbackP = document.getElementById("txt-update-feedback");
     const sucessMessage = "Texto salvo com sucesso!";
     const failMessage = "Upload do texto falhou!"
+    console.log(data)
     const req = { method: "POST", body: data }
     fetch("/save-txt-data/", req)
         .then(res => {
@@ -122,8 +127,9 @@ function sendDataToTxtFile() {
 
 function deleteTxtData(){
     const sucessMessage = "Texto deletado com sucesso!";
-    const failMessage = "A operacão de deletar o texto falhou!"
-    const req = { method: "DEL" }
+    const failMessage = "A operacão de deletar o texto falhou!";
+    const feedbackP = document.getElementById("txt-update-feedback");
+    const req = { method: "DELETE" }
     fetch("/del-txt-data/",req)
     .then(res => {
         if (res.status > 199 && res.status < 300)

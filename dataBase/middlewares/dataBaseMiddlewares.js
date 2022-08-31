@@ -1,45 +1,48 @@
 const fs = require("fs");
-const { resolve } = require("path");
 const filesDir = "./files/";
+const txtFile = "./data.txt";
 
 
 
-
-function appendFile(fileName, data, res) {
-    fileName = "./" + fileName;
-    fs.appendFile(fileName, data, error => {
-        if (error) {
-            dealError(error, res);
-        } else {
-            res.writeHead(200, { "content-type": "text/plain" });
-            res.end("Dados salvos com sucesso");
-        }
+function createWritableForTxtFile() {
+    return new Promise((resolve, reject) => {
+        const writable = fs.createWriteStream(txtFile, {flags: "a"});
+        writable.on("error", err => {
+            reject(err);
+        })
+        writable.on("open", () => {
+            console.log("bom dia")
+            resolve(writable);
+        })
+        console.log("oi");
     })
 }
 
 
 function clearFile(fileName, res) {
     fileName = "./" + fileName;
-    let data = "";
-    fs.writeFile(fileName, data, error => {
-        if (error) {
-            dealError(error, res);
-        }
-        else {
-            res.writeHead(200, { "content-type": "text/plain" });
-            res.end("Banco de dados deletado com sucesso");
-        }
-    });
+    const data = "";
+    const sucessMessage = "File cleared with sucess!";
+    return new Promise((resolve,reject) => {
+        fs.writeFile(fileName, data, error => {
+            if (error) {
+                reject(error)
+            }
+            else {
+                resolve(sucessMessage);
+            }
+        });
+    })
 }
 
 
-function getFilesList(){
-    return new Promise((resolve,reject) => {
-        fs.readdir(filesDir, (err,files) => {
-            if(err){
+function getFilesList() {
+    return new Promise((resolve, reject) => {
+        fs.readdir(filesDir, (err, files) => {
+            if (err) {
                 reject(err)
             }
-            else{
+            else {
                 files = remove_git_ignore_from_list(files);
                 resolve(files);
             }
@@ -48,37 +51,29 @@ function getFilesList(){
 }
 
 
-function remove_git_ignore_from_list(files){
+function remove_git_ignore_from_list(files) {
     let index = files.indexOf(".gitignore");
-    if(index > -1)
-        files.splice(index,1);
+    if (index > -1)
+        files.splice(index, 1);
     return files;
 }
 
 
-function dealError(error, res) {
-    console.log(error);
-    res.writeHead(500, { "content-type": "text/plain" });
-    res.end(error);
-}
-
-
-function readFile(fileName) {
+function createReadableForTxtFile() {
     return new Promise((resolve, reject) => {
-        fileName = "./" + fileName;
-        fs.readFile(fileName, "utf8", (error, data) => {
-            if (error)
-                reject(error);
-            else {
-                resolve(data);
-            }
+        const fileStream = fs.createReadStream(txtFile);
+        fileStream.on("error", err => {
+            reject(err);
+        })
+        fileStream.on("open", () => {
+            resolve(fileStream);
         })
     })
 }
 
 
-function createStreamForDownloadFile(filename){
-    return new Promise((resolve,reject) => {
+function createStreamForDownloadFile(filename) {
+    return new Promise((resolve, reject) => {
         const fileStream = fs.createReadStream(filesDir + filename);
         fileStream.on("error", err => {
             reject(err);
@@ -93,18 +88,25 @@ function createStreamForDownloadFile(filename){
 
 
 
-function saveFile(req, fileName,encoding) {
+function saveFile(req, fileName, encoding) {
     const sucessMessage = fileName + " saved!";
-    return new Promise((resolve,reject) => {
-        const fileWriteStream = fs.createWriteStream(filesDir + fileName);
+    return new Promise((resolve, reject) => {
+        const fileWriteStream = fs.createWriteStream(filesDir + fileName,encoding);
         fileWriteStream.on("error", err => {
             reject(err);
         })
-        req.on("data", chunk => {
-            fileWriteStream.write(chunk,encoding);
-        });
-        req.on("end", () => {
-            resolve(sucessMessage);
+        fileWriteStream.on("drain", () => {
+            req.resume();
+        })
+        fileWriteStream.on("open", () => {
+            req.on("data", chunk => {
+                if(!fileWriteStream.write(chunk,encoding)){
+                    req.pause();
+                }
+            });
+            req.on("end", () => {
+                resolve(sucessMessage);
+            })
         })
     });
 }
@@ -113,10 +115,10 @@ function saveFile(req, fileName,encoding) {
 
 
 
-module.exports = { 
-    readFile, 
-    clearFile, 
-    appendFile, 
+module.exports = {
+    createReadableForTxtFile,
+    clearFile,
+    createWritableForTxtFile,
     saveFile,
     getFilesList,
     createStreamForDownloadFile

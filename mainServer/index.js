@@ -76,13 +76,35 @@ const server = http.createServer((req, res) => {
         return;
     }
     if(req.method == "GET" && req.url == "/get-txt-data/"){
-        
+        get_txt_stream_data_base()
+        .then(txtStream => {
+            const sucessMessage = "Data from text file" + incompletSendSucessMessage;
+            pipeReadableAndLogRequestEnd(txtStream,res,sucessMessage,reqNumber);
+        })
+        .catch(err => {
+            end_request(res,statusCodeServerError,err,reqNumber);
+        })
+        return;
     }
     if(req.method == "POST" && req.url == "/save-txt-data/"){
-
+        save_txt_data_base(req)
+        .then(sucessMessage => {
+            end_request(res,statusCodeSucess,sucessMessage,reqNumber);
+        })
+        .catch(err => {
+            end_request(res,statusCodeServerError,err,reqNumber);
+        })
+        return;
     }
-    if(req.method == "DEL" && req.url == "/del-txt-data/"){
-
+    if(req.method == "DELETE" && req.url == "/del-txt-data/"){
+        del_txt_data_base()
+        .then(sucessMessage => {
+            end_request(res,statusCodeSucess,sucessMessage,reqNumber);
+        })
+        .catch(err => {
+            end_request(res,statusCodeServerError,err,reqNumber);
+        })
+        return;
     }
     end_request(res,statusCodeNotFound,routeNotFoundMesage,reqNumber);
 })
@@ -103,14 +125,92 @@ server.listen(PORT, error => {
 //Functions
 
 
-function getTxtDataFromDataBase(){
+function save_txt_data_base(dataStream){
+    const options = {
+        host: dataBaseIp,
+        port: dataBasePort,
+        path: "/postData/",
+        method: "POST",
+    }
+    const sucessMessage = "Text" + incompletUploadSucessMessage;
+    return new Promise((resolve,reject) => {
+        const dataBaseReq = http.request(options, dataBaseRes => {
+            if(dataBaseRes.statusCode > 199 && dataBaseRes.statusCode < 300)
+                    resolve(sucessMessage);
+                else{
+                    let err = "";
+                    dataBaseRes.on("data", err => {
+                        err += err.toString();
+                    })
+                    dataBaseRes.on("end", () => {
+                        reject(err);
+                    })
+                }
+        });
+        dataBaseReq.on("error", err => {
+            reject(err);
+        })
+        dataStream.pipe(dataBaseReq);
+    })
+}
+
+
+function del_txt_data_base(){
+    const options = {
+        host: dataBaseIp,
+        port: dataBasePort,
+        path: "/deleteData/",
+        method: "DELETE",
+    }
+    const sucessMessage = "Text deleted with sucess!";
+    return new Promise((resolve,reject) => {
+        const dataBaseReq = http.request(options, dataBaseRes => {
+            if(dataBaseRes.statusCode > 199 && dataBaseRes.statusCode < 300)
+                    resolve(sucessMessage);
+                else{
+                    let err = "";
+                    dataBaseRes.on("data", err => {
+                        err += err.toString();
+                    })
+                    dataBaseRes.on("end", () => {
+                        reject(err);
+                    })
+                }
+        });
+        dataBaseReq.on("error", err => {
+            reject(err);
+        })
+        dataBaseReq.end();
+    })
+}
+
+
+
+
+function get_txt_stream_data_base(){
     const options = {
         host: dataBaseIp,
         port: dataBasePort,
         path: "/getData/",
     }
-    const dataBaseReq = http.request(options, dataBaseRes => {
-        
+    return new Promise((resolve,reject) => {
+        const dataBaseReq = http.request(options, dataBaseRes => {
+            if(dataBaseRes.statusCode > 199 && dataBaseRes.statusCode < 300)
+                    resolve(dataBaseRes);
+                else{
+                    let err = "";
+                    dataBaseRes.on("data", err => {
+                        err += err.toString();
+                    })
+                    dataBaseRes.on("end", () => {
+                        reject(err);
+                    })
+                }
+        })
+        dataBaseReq.on("error", err => {
+            reject(err);
+        })
+        dataBaseReq.end();
     })
 }
 
@@ -133,7 +233,7 @@ function get_list_available_files_data_base() {
         const dataBaseReq = http.request(options, dataBaseRes => {
             let data = "";
             dataBaseRes.on("data", chunk => {
-                data = chunk.toString();
+                data += chunk.toString();
             })
             dataBaseRes.on("end", () => {
                 if(dataBaseRes.statusCode > 199 && dataBaseRes.statusCode < 300)
